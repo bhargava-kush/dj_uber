@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=dj_uber
+POSTGRES_USER=uoRiviaTrndZIQTeERfCItmaLhDuvgXE
+POSTGRES_PASSWORD=zgFbz2wCIw4opNK7c7JTs1qgItUsUufK65KGapSwM4gy5biz9Uiv6eO3eX8fawNO
