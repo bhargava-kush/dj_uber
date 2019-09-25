@@ -43,11 +43,6 @@ class TokenSerializers(serializers.ModelSerializer):
         return obj.user.role
 
 
-# {"current" :
-#      {"lang":"3","long":"56", "name":"jk", "type":"current"},
-#  "destination": {"lang":"3","long":"56", "name":"jk", "type":"destination"}
-#  }
-
 class PassengerSerializer(serializers.ModelSerializer):
 
     class Meta:

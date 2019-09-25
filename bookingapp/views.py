@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.status import (HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_200_OK)
 
@@ -18,9 +19,10 @@ class LocationSetView(APIView):
     Set passenger location
     """
     authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request):
-        obj = request.user
+        obj = request.user.passenger
         request_data = request.data
         serializer = PassengerSerializer(request_data, obj)
         serializer.create(request_data, obj)
@@ -31,38 +33,37 @@ class LocationSetView(APIView):
         return Response(response, status=HTTP_200_OK)
 
 
-@api_view(['GET'])
-@authentication_classes
-def available_ride(request):
-    """
-    Driver checking for availabe rides within some radius
-    :param request:
-    :return:
-    """
-    driver_obj = request.user
-    driver_tuple = (driver_obj.current_location.longtitude,
-                    driver_obj.current_location.latitude)
+class AvailableRideView(APIView):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
 
-    passengers = Passenger.objects.filter(is_searching=True)
-    vicinity_distances = []
-    for passenger in passengers:
-        passenger_tuple = (passenger.current_location.longtitude,
-                           passenger.current_location.latitude)
-        distance = haversine(passenger_tuple, driver_tuple)
-        if distance <= settings.ALLOWED_VICINITY_DISTANCE:
-            vicinity_distances.append(passenger)
+    def get(self, request):
+        driver_obj = request.user.driver
 
-    serializer = PassengerSerializer(vicinity_distances, many=True)
-    import pdb;pdb.set_trace();
+        driver_tuple = (float(driver_obj.current_location.longitude),
+                        float(driver_obj.current_location.latitude))
 
-    response = {"response": {
-        'data': serializer.data,
-        'msg': 'Passenger location'}
-    }
-    return Response(response, status=HTTP_200_OK)
+        passengers = Passenger.objects.filter(is_searching=True)
+        vicinity_distances = []
+
+        for passenger in passengers:
+            passenger_tuple = (float(passenger.current_location.longitude),
+                               float(passenger.current_location.latitude))
+            distance = haversine(passenger_tuple, driver_tuple)
+            if distance <= settings.ALLOWED_VICINITY_DISTANCE:
+                vicinity_distances.append(passenger)
+
+        serializer = PassengerSerializer(vicinity_distances, many=True)
+
+        response = {"response": {
+            'data': serializer.data,
+            'msg': 'Passenger location'}
+        }
+        return Response(response, status=HTTP_200_OK)
 
 
-@authentication_classes
+@authentication_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def accept_ride(request):
     """
@@ -71,7 +72,7 @@ def accept_ride(request):
     :return:
     """
     data = request.data
-    driver_obj = request.user
+    driver_obj = request.user.driver
     passenger_obj = Passenger.objects.get(pk=data['passenger_id'])
 
     trip_obj = Trip.objects.create(passenger=passenger_obj, driver=driver_obj,
@@ -90,7 +91,8 @@ def accept_ride(request):
     return Response(response, status=HTTP_200_OK)
 
 
-@authentication_classes
+@authentication_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 @api_view(['GET'])
 def request_ride(request):
     """
@@ -98,13 +100,16 @@ def request_ride(request):
     :param request:
     :return:
     """
-    passenger_obj = request.user
-    if Trip.objects.filter(passenger=passenger_obj).last().status == 'IS_ACTIVE':
-        response = {"response": {
-            'success': False,
-            'msg': 'Currently ride in process'}
-        }
-        return Response(response, status=HTTP_400_BAD_REQUEST)
+    passenger_obj = request.user.passenger
+    last_trip = Trip.objects.filter(passenger=passenger_obj).last()
+
+    if last_trip:
+        if last_trip.status == 'IS_ACTIVE':
+            response = {"response": {
+                'success': False,
+                'msg': 'Currently ride in process'}
+            }
+            return Response(response, status=HTTP_400_BAD_REQUEST)
 
     passenger_obj.is_searching = True
     passenger_obj.save()
@@ -115,7 +120,8 @@ def request_ride(request):
     return Response(response, status=HTTP_200_OK)
 
 
-@authentication_classes
+@authentication_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 @api_view(['GET'])
 def is_ride_accepted(request):
     """
@@ -123,7 +129,7 @@ def is_ride_accepted(request):
     :param request:
     :return:
     """
-    passenger_obj = request.user
+    passenger_obj = request.user.passenger
     last_trip = Trip.objects.filter(passenger=passenger_obj).last()
 
     if last_trip and last_trip.status == 'IS_ACTIVE':
