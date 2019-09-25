@@ -20,3 +20,4 @@ djangorestframework==3.10.3  # https://github.com/encode/django-rest-framework
 coreapi==2.3.3  # https://github.com/core-api/python-client
 
 django-rest-auth
+haversine # To find distance between long and lat
